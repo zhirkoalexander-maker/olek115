@@ -118,7 +118,24 @@ decode_escape_u() {
         return 1
     fi
     local cp=$((16#$hex))
-    if (( cp == 0 || (cp >= 0xD800 && cp <= 0xDFFF) )); then
+    if (( cp >= 0xD800 && cp <= 0xDBFF )); then
+        local next="${INPUT:POS+5:6}"
+        if [[ ! "$next" =~ ^\\u[0-9a-fA-F]{4}$ ]]; then
+            printf 'error: unpaired surrogate %s at pos %d\n' "$hex" "$POS" >&2
+            return 1
+        fi
+        local low=$((16#${next:2:4}))
+        if (( low < 0xDC00 || low > 0xDFFF )); then
+            printf 'error: unpaired surrogate %s at pos %d\n' "$hex" "$POS" >&2
+            return 1
+        fi
+        cp=$((0x10000 + ((cp - 0xD800) * 1024) + (low - 0xDC00)))
+        POS=$((POS+6))
+    elif (( cp >= 0xDC00 && cp <= 0xDFFF )); then
+        printf 'error: unpaired surrogate %s at pos %d\n' "$hex" "$POS" >&2
+        return 1
+    fi
+    if (( cp == 0 )); then
         printf 'error: unsupported unicode escape %s at pos %d\n' "$hex" "$POS" >&2
         return 1
     fi
@@ -127,8 +144,10 @@ decode_escape_u() {
         bytes=$(printf '\\%03o' "$cp")
     elif (( cp < 0x800 )); then
         bytes=$(printf '\\%03o\\%03o' "$((0xC0 | (cp >> 6)))" "$((0x80 | (cp & 0x3F)))")
-    else
+    elif (( cp < 0x10000 )); then
         bytes=$(printf '\\%03o\\%03o\\%03o' "$((0xE0 | (cp >> 12)))" "$((0x80 | ((cp >> 6) & 0x3F)))" "$((0x80 | (cp & 0x3F)))")
+    else
+        bytes=$(printf '\\%03o\\%03o\\%03o\\%03o' "$((0xF0 | (cp >> 18)))" "$((0x80 | ((cp >> 12) & 0x3F)))" "$((0x80 | ((cp >> 6) & 0x3F)))" "$((0x80 | (cp & 0x3F)))")
     fi
     CH=$(printf '%b' "$bytes")
     POS=$((POS+4))
