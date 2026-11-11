@@ -122,6 +122,7 @@ parse_string() {
                 '"') CH='"' ;;
                 '\') CH='\' ;;
                 '/') CH='/' ;;
+                *) printf 'error: bad escape %q at pos %d\n' "$CH" "$POS" >&2; return 1 ;;
             esac
         fi
         out+="$CH"
