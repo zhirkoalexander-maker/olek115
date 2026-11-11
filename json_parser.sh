@@ -191,6 +191,7 @@ parse_object() {
             skip_whitespace
             expect_char ':'
             skip_whitespace
+            local vstart="$POS"
             parse_value
             obj+=("$key=$VAL")
         else
