@@ -6,7 +6,7 @@ POS=0
 LEN=0
 CH=""
 VAL=""
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 init_parser() {
     INPUT="$1"
