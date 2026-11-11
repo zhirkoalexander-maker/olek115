@@ -126,6 +126,7 @@ parse_string() {
                 '"') CH='"' ;;
                 '\') CH='\' ;;
                 '/') CH='/' ;;
+                u) printf 'error: unicode escapes not supported at pos %d\n' "$POS" >&2; return 1 ;;
                 *) printf 'error: bad escape %q at pos %d\n' "$CH" "$POS" >&2; return 1 ;;
             esac
         fi
