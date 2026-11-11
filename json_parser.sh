@@ -38,7 +38,8 @@ skip_whitespace() {
 expect_char() {
     local expected="$1"
     local c
-    c=$(consume_char)
+    c=$(peek_char)
+    POS=$((POS+1))
     if [[ "$c" != "$expected" ]]; then
         printf 'error: expected %q, got %q at pos %d\n' "$expected" "$c" "$POS" >&2
         return 1
