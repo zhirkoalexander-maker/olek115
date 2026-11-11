@@ -186,6 +186,7 @@ parse_object() {
         if [[ "$CH" == '"' ]]; then
             parse_string
             local key="$VAL"
+            keys+="$key"$'\n'
             skip_whitespace
             expect_char ':'
             parse_value
