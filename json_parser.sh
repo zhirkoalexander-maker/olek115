@@ -239,7 +239,7 @@ main() {
     if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|file]  (dash or no argument reads stdin)\n' "$0"; exit 0; fi
     if [[ "${1-}" == '-v' || "${1-}" == '--version' ]]; then printf 'json_parser %s\n' "$VERSION"; exit 0; fi
     if (( $# > 0 )); then
-        if [[ "$1" == '-' ]]; then json=$(cat); elif [[ -f "$1" ]]; then json=$(cat "$1"); else json="$1"; fi
+        if [[ "$1" == '-' ]]; then json=$(cat); elif [[ -f "$1" ]]; then json=$(cat "$1"); elif [[ "$1" == *.json ]]; then printf 'error: no such file: %s\n' "$1" >&2; exit 1; else json="$1"; fi
     else
         json=$(cat)
     fi
