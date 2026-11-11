@@ -11,3 +11,9 @@ init_parser() {
     POS=0
     LEN=${#INPUT}
 }
+
+peek_char() {
+    if (( POS < LEN )); then
+        printf '%s' "${INPUT:POS:1}"
+    fi
+}
