@@ -244,6 +244,7 @@ main() {
         json=$(cat)
     fi
     init_parser "$json"
+    if [[ -z "$json" ]]; then printf 'error: empty input\n' >&2; exit 1; fi
     parse_document
     printf '%s\n' "$VAL"
 }
