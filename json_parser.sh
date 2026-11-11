@@ -34,3 +34,13 @@ skip_whitespace() {
         esac
     done
 }
+
+expect_char() {
+    local expected="$1"
+    local c
+    c=$(consume_char)
+    if [[ "$c" != "$expected" ]]; then
+        printf 'error: expected %q, got %q at pos %d\n' "$expected" "$c" "$POS" >&2
+        return 1
+    fi
+}
