@@ -20,7 +20,7 @@ peek_char() {
 consume_char() {
     local c
     c=$(peek_char)
-    (( POS++ )) || true
+    POS=$((POS+1))
     printf '%s' "$c"
 }
 
@@ -29,7 +29,7 @@ skip_whitespace() {
     while (( POS < LEN )); do
         c="${INPUT:POS:1}"
         case "$c" in
-            ' '|$'\t'|$'\n'|$'\r') (( POS++ )) ;;
+            ' '|$'\t'|$'\n'|$'\r') POS=$((POS+1)) ;;
             *) break ;;
         esac
     done
