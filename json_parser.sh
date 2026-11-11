@@ -103,6 +103,18 @@ parse_string() {
         if [[ "$CH" == '"' ]]; then
             break
         fi
+        if [[ "$CH" == '\' ]]; then
+            POS=$((POS+1))
+            peek_char
+            case "$CH" in
+                n) CH=$'\n' ;;
+                t) CH=$'\t' ;;
+                r) CH=$'\r' ;;
+                '"') CH='"' ;;
+                '\') CH='\' ;;
+                '/') CH='/' ;;
+            esac
+        fi
         out+="$CH"
         POS=$((POS+1))
     done
