@@ -42,6 +42,10 @@ skip_whitespace() {
 expect_char() {
     local expected="$1"
     consume_char
+    if [[ -z "$CH" ]]; then
+        printf 'error: unexpected end of input at pos %d\n' "$POS" >&2
+        return 1
+    fi
     if [[ "$CH" != "$expected" ]]; then
         printf 'error: expected %q, got %q at pos %d\n' "$expected" "$CH" "$((POS - ${#CH}))" >&2
         return 1
@@ -150,7 +154,10 @@ parse_array() {
         return
     fi
     while true; do
+        skip_whitespace
+        local astart="$POS"
         parse_value
+        local aend="$POS"
         arr+=("$VAL")
         skip_whitespace
         peek_char
