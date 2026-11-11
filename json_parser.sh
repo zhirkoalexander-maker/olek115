@@ -111,6 +111,7 @@ parse_string() {
     local out=""
     while (( POS < LEN )); do
         peek_char
+        if [[ "$CH" == [[:cntrl:]] ]]; then printf 'error: control character in string at pos %d\n' "$POS" >&2; return 1; fi
         if [[ "$CH" == '"' ]]; then
             break
         fi
