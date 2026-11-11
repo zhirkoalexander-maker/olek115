@@ -222,7 +222,7 @@ main() {
     local json=""
     if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json]\n' "$0"; exit 0; fi
     if (( $# > 0 )); then
-        json="$1"
+        if [[ -f "$1" ]]; then json=$(cat "$1"); else json="$1"; fi
     else
         json=$(cat)
     fi
