@@ -92,6 +92,10 @@ parse_number() {
             *) break ;;
         esac
     done
+    if [[ -z "$num" ]]; then
+        printf 'error: invalid value at pos %d\n' "$POS" >&2
+        return 1
+    fi
     VAL="$num"
 }
 
