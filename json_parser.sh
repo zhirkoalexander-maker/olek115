@@ -194,6 +194,7 @@ parse_object() {
             local vstart="$POS"
             parse_value
             local vend="$POS"
+            local raw="${INPUT:vstart:vend-vstart}"
             obj+=("$key=$VAL")
         else
             printf 'error: expected object key at pos %d\n' "$POS" >&2
