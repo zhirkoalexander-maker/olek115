@@ -66,7 +66,7 @@ parse_value() {
         'n') parse_null ;;
         '') printf 'error: unexpected end of input at pos %d\n' "$POS" >&2; return 1 ;;
         -|[0-9]) parse_number ;;
-        *) parse_number ;;
+        *) printf 'error: unexpected character %q at pos %d\n' "$CH" "$POS" >&2; return 1 ;;
     esac
 }
 
