@@ -186,6 +186,7 @@ parse_object() {
         if [[ "$CH" == '"' ]]; then
             parse_string
             local key="$VAL"
+            if [[ "$keys" == *$'\n'"$key"$'\n'* ]]; then printf 'error: duplicate key %q at pos %d\n' "$key" "$((POS - ${#key} - 2))" >&2; return 1; fi
             keys+="$key"$'\n'
             skip_whitespace
             expect_char ':'
