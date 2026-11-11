@@ -96,6 +96,10 @@ parse_number() {
         printf 'error: invalid value at pos %d\n' "$POS" >&2
         return 1
     fi
+    if [[ ! "$num" =~ ^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$ ]]; then
+        printf 'error: invalid number %q at pos %d\n' "$num" "$POS" >&2
+        return 1
+    fi
     VAL="$num"
 }
 
