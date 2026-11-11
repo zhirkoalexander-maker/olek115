@@ -71,3 +71,137 @@ parse_null() {
     expect_word 'null'
     VAL='null'
 }
+
+parse_bool() {
+    peek_char
+    if [[ "$CH" == 't' ]]; then
+        expect_word 'true'
+        VAL='true'
+    else
+        expect_word 'false'
+        VAL='false'
+    fi
+}
+
+parse_number() {
+    local num=""
+    while (( POS < LEN )); do
+        peek_char
+        case "$CH" in
+            '-'|[0-9]|'.'|'e'|'E'|'+' ) num+="$CH"; POS=$((POS+1)) ;;
+            *) break ;;
+        esac
+    done
+    VAL="$num"
+}
+
+parse_string() {
+    expect_char '"'
+    local out=""
+    while (( POS < LEN )); do
+        peek_char
+        if [[ "$CH" == '"' ]]; then
+            break
+        fi
+        out+="$CH"
+        POS=$((POS+1))
+    done
+    expect_char '"'
+    VAL="$out"
+}
+
+parse_array() {
+    expect_char '['
+    skip_whitespace
+    local arr=()
+    peek_char
+    if [[ "$CH" == ']' ]]; then
+        expect_char ']'
+        VAL='[]'
+        return
+    fi
+    while true; do
+        parse_value
+        arr+=("$VAL")
+        skip_whitespace
+        peek_char
+        if [[ "$CH" == ',' ]]; then
+            POS=$((POS+1))
+            skip_whitespace
+            continue
+        elif [[ "$CH" == ']' ]]; then
+            break
+        else
+            printf 'error: expected comma or closing bracket at pos %d\n' "$POS" >&2
+            return 1
+        fi
+    done
+    expect_char ']'
+    VAL="${arr[*]}"
+}
+
+parse_object() {
+    expect_char '{'
+    skip_whitespace
+    local obj=()
+    peek_char
+    if [[ "$CH" == '}' ]]; then
+        expect_char '}'
+        VAL='{}'
+        return
+    fi
+    while true; do
+        skip_whitespace
+        peek_char
+        if [[ "$CH" == '"' ]]; then
+            parse_string
+            local key="$VAL"
+            skip_whitespace
+            expect_char ':'
+            parse_value
+            obj+=("$key=$VAL")
+        else
+            printf 'error: expected object key at pos %d\n' "$POS" >&2
+            return 1
+        fi
+        skip_whitespace
+        peek_char
+        if [[ "$CH" == ',' ]]; then
+            POS=$((POS+1))
+            continue
+        elif [[ "$CH" == '}' ]]; then
+            break
+        else
+            printf 'error: expected comma or closing brace at pos %d\n' "$POS" >&2
+            return 1
+        fi
+    done
+    expect_char '}'
+    VAL="${obj[*]}"
+}
+
+parse_document() {
+    skip_whitespace
+    parse_value
+    skip_whitespace
+    if (( POS < LEN )); then
+        printf 'error: trailing data at pos %d\n' "$POS" >&2
+        return 1
+    fi
+}
+
+main() {
+    local json=""
+    if (( $# > 0 )); then
+        json="$1"
+    else
+        json=$(cat)
+    fi
+    init_parser "$json"
+    parse_document
+    printf '%s\n' "$VAL"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
