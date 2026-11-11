@@ -44,3 +44,17 @@ expect_char() {
         return 1
     fi
 }
+
+parse_value() {
+    skip_whitespace
+    local c
+    c=$(peek_char)
+    case "$c" in
+        '{') parse_object ;;
+        '[') parse_array ;;
+        '"') parse_string ;;
+        't'|'f') parse_bool ;;
+        'n') parse_null ;;
+        ''|*) parse_number ;;
+    esac
+}
