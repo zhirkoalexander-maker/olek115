@@ -158,7 +158,8 @@ parse_array() {
         local astart="$POS"
         parse_value
         local aend="$POS"
-        arr+=("$VAL")
+        local araw="${INPUT:astart:aend-astart}"
+        if [[ "${araw:0:1}" == '{' || "${araw:0:1}" == '[' ]]; then arr+=("$araw"); else arr+=("$VAL"); fi
         skip_whitespace
         peek_char
         if [[ "$CH" == ',' ]]; then
