@@ -224,7 +224,7 @@ main() {
     if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|file]\n' "$0"; exit 0; fi
     if [[ "${1-}" == '-v' || "${1-}" == '--version' ]]; then printf 'json_parser %s\n' "$VERSION"; exit 0; fi
     if (( $# > 0 )); then
-        if [[ -f "$1" ]]; then json=$(cat "$1"); else json="$1"; fi
+        if [[ "$1" == '-' ]]; then json=$(cat); elif [[ -f "$1" ]]; then json=$(cat "$1"); else json="$1"; fi
     else
         json=$(cat)
     fi
