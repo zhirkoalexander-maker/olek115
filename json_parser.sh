@@ -217,7 +217,7 @@ parse_document() {
     parse_value
     skip_whitespace
     if (( POS < LEN )); then
-        printf 'error: trailing data at pos %d\n' "$POS" >&2
+        printf 'error: trailing data at pos %d: %q\n' "$POS" "${INPUT:POS:10}" >&2
         return 1
     fi
 }
