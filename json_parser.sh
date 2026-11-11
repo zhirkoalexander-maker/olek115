@@ -173,6 +173,7 @@ parse_object() {
     expect_char '{'
     skip_whitespace
     local obj=()
+    local keys=$'\n'
     peek_char
     if [[ "$CH" == '}' ]]; then
         expect_char '}'
