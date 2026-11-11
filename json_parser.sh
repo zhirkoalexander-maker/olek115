@@ -17,3 +17,10 @@ peek_char() {
         printf '%s' "${INPUT:POS:1}"
     fi
 }
+
+consume_char() {
+    local c
+    c=$(peek_char)
+    (( POS++ )) || true
+    printf '%s' "$c"
+}
