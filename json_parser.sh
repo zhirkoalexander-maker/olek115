@@ -201,7 +201,7 @@ parse_array() {
         parse_value
         local aend="$POS"
         local araw="${INPUT:astart:aend-astart}"
-        arr+=("$araw")
+        if [[ "${araw:0:1}" == '"' ]]; then arr+=("\"$VAL\""); else arr+=("$araw"); fi
         skip_whitespace
         peek_char
         if [[ "$CH" == ',' ]]; then
@@ -245,7 +245,7 @@ parse_object() {
             parse_value
             local vend="$POS"
             local raw="${INPUT:vstart:vend-vstart}"
-            obj+=("$key=$raw")
+            if [[ "${raw:0:1}" == '"' ]]; then obj+=("$key=\"$VAL\""); else obj+=("$key=$raw"); fi
         else
             printf 'error: expected object key at pos %d\n' "$POS" >&2
             return 1
