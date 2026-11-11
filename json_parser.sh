@@ -83,7 +83,10 @@ parse_string() {
     local c
     while (( POS < LEN )); do
         c="${INPUT:POS:1}"
-        if [[ "$c" == '"' ]]; then
+        if [[ "$c" == '\' ]]; then
+            (( POS++ ))
+            c="${INPUT:POS:1}"
+        elif [[ "$c" == '"' ]]; then
             (( POS++ ))
             printf '%s' "$buf"
             return 0
