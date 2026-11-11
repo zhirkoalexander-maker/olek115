@@ -63,7 +63,8 @@ parse_value() {
         '"') parse_string ;;
         't'|'f') parse_bool ;;
         'n') parse_null ;;
-        ''|*) parse_number ;;
+        '') printf 'error: unexpected end of input at pos %d\n' "$POS" >&2; return 1 ;;
+        *) parse_number ;;
     esac
 }
 
