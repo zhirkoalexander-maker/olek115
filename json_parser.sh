@@ -4,6 +4,7 @@ set -euo pipefail
 INPUT=""
 POS=0
 LEN=0
+CH=""
 
 init_parser() {
     INPUT="$1"
@@ -12,23 +13,23 @@ init_parser() {
 }
 
 peek_char() {
+    CH=""
     if (( POS < LEN )) ; then
-        printf '%s' "${INPUT:POS:1}"
+        CH="${INPUT:POS:1}"
     fi
 }
 
 consume_char() {
-    local c
-    c=$(peek_char)
-    POS=$((POS+1))
-    printf '%s' "$c"
+    peek_char
+    if (( POS < LEN )) ; then
+        POS=$((POS+1))
+    fi
 }
 
 skip_whitespace() {
-    local c
     while (( POS < LEN )); do
-        c="${INPUT:POS:1}"
-        case "$c" in
+        peek_char
+        case "$CH" in
             ' '|$'\t'|$'\n'|$'\r') POS=$((POS+1)) ;;
             *) break ;;
         esac
@@ -37,20 +38,17 @@ skip_whitespace() {
 
 expect_char() {
     local expected="$1"
-    local c
-    c=$(peek_char)
-    POS=$((POS+1))
-    if [[ "$c" != "$expected" ]]; then
-        printf 'error: expected %q, got %q at pos %d\n' "$expected" "$c" "$POS" >&2
+    consume_char
+    if [[ "$CH" != "$expected" ]]; then
+        printf 'error: expected %q, got %q at pos %d\n' "$expected" "$CH" "$POS" >&2
         return 1
     fi
 }
 
 parse_value() {
     skip_whitespace
-    local c
-    c=$(peek_char)
-    case "$c" in
+    peek_char
+    case "$CH" in
         '{') parse_object ;;
         '[') parse_array ;;
         '"') parse_string ;;
