@@ -77,6 +77,24 @@ parse_number() {
     printf '%s' "$buf"
 }
 
+parse_string() {
+    (( POS++ ))
+    local buf=""
+    local c
+    while (( POS < LEN )); do
+        c="${INPUT:POS:1}"
+        if [[ "$c" == '"' ]]; then
+            (( POS++ ))
+            printf '%s' "$buf"
+            return 0
+        fi
+        buf+="$c"
+        (( POS++ ))
+    done
+    printf 'error: unterminated string at pos %d\n' "$POS" >&2
+    return 1
+}
+
 parse_value() {
     skip_whitespace
     local c
