@@ -24,3 +24,14 @@ consume_char() {
     (( POS++ )) || true
     printf '%s' "$c"
 }
+
+skip_whitespace() {
+    local c
+    while (( POS < LEN )); do
+        c="${INPUT:POS:1}"
+        case "$c" in
+            ' '|$'\t'|$'\n'|$'\r') (( POS++ )) ;;
+            *) break ;;
+        esac
+    done
+}
