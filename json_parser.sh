@@ -43,7 +43,7 @@ expect_char() {
     local expected="$1"
     consume_char
     if [[ "$CH" != "$expected" ]]; then
-        printf 'error: expected %q, got %q at pos %d\n' "$expected" "$CH" "$POS" >&2
+        printf 'error: expected %q, got %q at pos %d\n' "$expected" "$CH" "$((POS - ${#CH}))" >&2
         return 1
     fi
 }
