@@ -46,6 +46,18 @@ expect_char() {
     fi
 }
 
+parse_bool() {
+    local c
+    c=$(peek_char)
+    if [[ "$c" == "t" ]]; then
+        POS=$((POS + 4))
+        printf 'true'
+    else
+        POS=$((POS + 5))
+        printf 'false'
+    fi
+}
+
 parse_null() {
     POS=$((POS + 4))
     printf 'null'
