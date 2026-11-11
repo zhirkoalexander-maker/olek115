@@ -5,6 +5,7 @@ INPUT=""
 POS=0
 LEN=0
 CH=""
+VAL=""
 
 init_parser() {
     INPUT="$1"
@@ -45,6 +46,14 @@ expect_char() {
     fi
 }
 
+expect_word() {
+    local word="$1"
+    local i
+    for (( i = 0; i < ${#word}; i++ )); do
+        expect_char "${word:i:1}"
+    done
+}
+
 parse_value() {
     skip_whitespace
     peek_char
@@ -56,4 +65,9 @@ parse_value() {
         'n') parse_null ;;
         ''|*) parse_number ;;
     esac
+}
+
+parse_null() {
+    expect_word 'null'
+    VAL='null'
 }
