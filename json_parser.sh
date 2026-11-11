@@ -190,6 +190,7 @@ parse_object() {
             keys+="$key"$'\n'
             skip_whitespace
             expect_char ':'
+            skip_whitespace
             parse_value
             obj+=("$key=$VAL")
         else
