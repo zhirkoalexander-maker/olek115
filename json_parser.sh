@@ -63,6 +63,20 @@ parse_null() {
     printf 'null'
 }
 
+parse_number() {
+    local buf=""
+    local c
+    while (( POS < LEN )); do
+        c="${INPUT:POS:1}"
+        case "$c" in
+            -|+|.|e|E|[0-9]) buf+="$c" ;;
+            *) break ;;
+        esac
+        (( POS++ ))
+    done
+    printf '%s' "$buf"
+}
+
 parse_value() {
     skip_whitespace
     local c
