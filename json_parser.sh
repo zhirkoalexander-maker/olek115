@@ -111,6 +111,29 @@ parse_number() {
     VAL="$num"
 }
 
+decode_escape_u() {
+    local hex="${INPUT:POS+1:4}"
+    if [[ ! "$hex" =~ ^[0-9a-fA-F]{4}$ ]]; then
+        printf 'error: bad unicode escape at pos %d\n' "$POS" >&2
+        return 1
+    fi
+    local cp=$((16#$hex))
+    if (( cp == 0 || (cp >= 0xD800 && cp <= 0xDFFF) )); then
+        printf 'error: unsupported unicode escape %s at pos %d\n' "$hex" "$POS" >&2
+        return 1
+    fi
+    local bytes=""
+    if (( cp < 0x80 )); then
+        bytes=$(printf '\\%03o' "$cp")
+    elif (( cp < 0x800 )); then
+        bytes=$(printf '\\%03o\\%03o' "$((0xC0 | (cp >> 6)))" "$((0x80 | (cp & 0x3F)))")
+    else
+        bytes=$(printf '\\%03o\\%03o\\%03o' "$((0xE0 | (cp >> 12)))" "$((0x80 | ((cp >> 6) & 0x3F)))" "$((0x80 | (cp & 0x3F)))")
+    fi
+    CH=$(printf '%b' "$bytes")
+    POS=$((POS+4))
+}
+
 parse_string() {
     expect_char '"'
     local out=""
@@ -132,7 +155,7 @@ parse_string() {
                 '"') CH='"' ;;
                 '\') CH='\' ;;
                 '/') CH='/' ;;
-                u) printf 'error: unicode escapes not supported at pos %d\n' "$POS" >&2; return 1 ;;
+                u) decode_escape_u || return 1 ;;
                 *) printf 'error: bad escape %q at pos %d\n' "$CH" "$POS" >&2; return 1 ;;
             esac
         fi
