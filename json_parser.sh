@@ -193,6 +193,7 @@ parse_object() {
             skip_whitespace
             local vstart="$POS"
             parse_value
+            local vend="$POS"
             obj+=("$key=$VAL")
         else
             printf 'error: expected object key at pos %d\n' "$POS" >&2
