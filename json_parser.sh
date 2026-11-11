@@ -9,6 +9,7 @@ VAL=""
 
 init_parser() {
     INPUT="$1"
+    INPUT="${INPUT#$'\xEF\xBB\xBF'}"
     POS=0
     LEN=${#INPUT}
 }
