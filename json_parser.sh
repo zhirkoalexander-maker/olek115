@@ -12,6 +12,7 @@ VERSION="0.3.0"
 init_parser() {
     INPUT="$1"
     INPUT="${INPUT#$'\xEF\xBB\xBF'}"
+    if (( ${#INPUT} > 1000000 )); then printf 'error: input too large\n' >&2; exit 1; fi
     POS=0
     LEN=${#INPUT}
 }
