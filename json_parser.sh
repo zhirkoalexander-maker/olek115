@@ -9,7 +9,6 @@ CH=""
 VAL=""
 VERSION="0.3.0"
 MAX_DEPTH=128
-COMPACT=0
 
 init_parser() {
     INPUT="$1"
@@ -293,7 +292,6 @@ main() {
     local json=""
 if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|file]  (dash or no argument reads stdin)\n       echo '"'"'{"a":1}'"'"' | %s\n       %s file.json\n' "$0" "$0" "$0"; exit 0; fi
     if [[ "${1-}" == '-v' || "${1-}" == '--version' ]]; then printf 'json_parser %s\n' "$VERSION"; exit 0; fi
-    if [[ "${1-}" == '--compact' ]]; then COMPACT=1; shift; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
