@@ -13,6 +13,7 @@ MAX_SIZE=1000000
 VALIDATE_ONLY=0
 ALLOW_DUPLICATE_KEYS=0
 QUIET=0
+ALLOW_TRAILING_COMMA=0
 
 init_parser() {
     INPUT="$1"
@@ -219,6 +220,8 @@ parse_array() {
         if [[ "$CH" == ',' ]]; then
             POS=$((POS+1))
             skip_whitespace
+            peek_char
+            if (( ALLOW_TRAILING_COMMA )) && [[ "$CH" == ']' ]]; then break; fi
             continue
         elif [[ "$CH" == ']' ]]; then
             break
@@ -269,6 +272,9 @@ parse_object() {
         peek_char
         if [[ "$CH" == ',' ]]; then
             POS=$((POS+1))
+            skip_whitespace
+            peek_char
+            if (( ALLOW_TRAILING_COMMA )) && [[ "$CH" == '}' ]]; then break; fi
             continue
         elif [[ "$CH" == '}' ]]; then
             break
@@ -301,6 +307,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     if [[ "${1-}" == '--max-size' ]]; then MAX_SIZE="$2"; shift 2; fi
     if [[ "${1-}" == '--allow-duplicate-keys' ]]; then ALLOW_DUPLICATE_KEYS=1; shift; fi
     if [[ "${1-}" == '-q' || "${1-}" == '--quiet' ]]; then QUIET=1; shift; fi
+    if [[ "${1-}" == '--allow-trailing-comma' ]]; then ALLOW_TRAILING_COMMA=1; shift; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
