@@ -286,15 +286,15 @@ main() {
     local json=""
     if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|file]  (dash or no argument reads stdin)\n' "$0"; exit 0; fi
     if [[ "${1-}" == '-v' || "${1-}" == '--version' ]]; then printf 'json_parser %s\n' "$VERSION"; exit 0; fi
-    if (( $# > 0 )); then
+if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
             shift
             if (( $# > 0 )); then
-                if [[ "$1" == '-' ]]; then json=$(cat); elif [[ -f "$1" && ! -r "$1" ]]; then printf 'error: cannot read file: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" ]]; then json=$(cat "$1"); elif [[ "$1" == *.json ]]; then printf 'error: no such file: %s\n' "$1" >&2; exit 1; else json="$1"; fi
+                if [[ "$1" == '-' ]]; then json=$(cat); elif [[ -d "$1" ]]; then printf 'error: is a directory: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" && ! -r "$1" ]]; then printf 'error: cannot read file: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" ]]; then json=$(cat "$1"); elif [[ "$1" == *.json ]]; then printf 'error: no such file: %s\n' "$1" >&2; exit 1; else json="$1"; fi
             else
                 if [[ -t 0 ]]; then printf 'usage: %s [json|file]  (dash or no argument reads stdin)\n' "$0"; exit 0; else json=$(cat); fi
             fi
-        elif [[ "$1" == '-' ]]; then json=$(cat); elif [[ -f "$1" && ! -r "$1" ]]; then printf 'error: cannot read file: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" ]]; then json=$(cat "$1"); elif [[ "$1" == *.json ]]; then printf 'error: no such file: %s\n' "$1" >&2; exit 1; else json="$1"; fi
+        elif [[ "$1" == '-' ]]; then json=$(cat); elif [[ -d "$1" ]]; then printf 'error: is a directory: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" && ! -r "$1" ]]; then printf 'error: cannot read file: %s\n' "$1" >&2; exit 1; elif [[ -f "$1" ]]; then json=$(cat "$1"); elif [[ "$1" == *.json ]]; then printf 'error: no such file: %s\n' "$1" >&2; exit 1; else json="$1"; fi
     elif [[ -t 0 ]]; then
         printf 'usage: %s [json|file]  (dash or no argument reads stdin)\n' "$0"
         exit 0
