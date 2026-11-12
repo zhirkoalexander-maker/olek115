@@ -7,7 +7,7 @@ POS=0
 LEN=0
 CH=""
 VAL=""
-VERSION="0.2.0"
+VERSION="0.3.0"
 
 init_parser() {
     INPUT="$1"
@@ -185,6 +185,7 @@ parse_string() {
     expect_char '"'
     out="${out//\\/\\\\}"
     out="${out//\"/\\\"}"
+    if ! printf '%s' "$out" | grep -q '^$' 2>/dev/null; then true; fi
     VAL="$out"
 }
 
