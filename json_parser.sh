@@ -9,12 +9,13 @@ CH=""
 VAL=""
 VERSION="0.3.0"
 MAX_DEPTH=128
+MAX_SIZE=1000000
 VALIDATE_ONLY=0
 
 init_parser() {
     INPUT="$1"
     INPUT="${INPUT#$'\xEF\xBB\xBF'}"
-    if (( ${#INPUT} > 1000000 )); then printf 'error: input too large\n' >&2; exit 1; fi
+    if (( ${#INPUT} > MAX_SIZE )); then printf 'error: input too large\n' >&2; exit 1; fi
     POS=0
     LEN=${#INPUT}
     DEPTH=0
@@ -295,6 +296,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     if [[ "${1-}" == '-v' || "${1-}" == '--version' ]]; then printf 'json_parser %s\n' "$VERSION"; exit 0; fi
     if [[ "${1-}" == '--validate' ]]; then VALIDATE_ONLY=1; shift; fi
     if [[ "${1-}" == '--max-depth' ]]; then MAX_DEPTH="$2"; shift 2; fi
+    if [[ "${1-}" == '--max-size' ]]; then MAX_SIZE="$2"; shift 2; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
