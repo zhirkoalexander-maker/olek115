@@ -195,6 +195,7 @@ parse_string() {
 parse_array() {
     expect_char '['
     skip_whitespace
+    if (( DEPTH++ >= MAX_DEPTH )); then printf 'error: max depth exceeded\n' >&2; return 1; fi
     local arr=()
     peek_char
     if [[ "$CH" == ']' ]]; then
@@ -224,6 +225,7 @@ parse_array() {
     done
     expect_char ']'
     VAL="${arr[*]}"
+    (( DEPTH-- ))
 }
 
 parse_object() {
