@@ -31,7 +31,19 @@ strip_comments() {
     local out=""
     local i=0
     local len=${#INPUT}
+    local instring=0
     while (( i < len )); do
+        if (( instring )); then
+            if [[ "${INPUT:i:1}" == '\' ]]; then
+                out+=${INPUT:i:2}
+                i=$((i+2))
+                continue
+            fi
+            [[ "${INPUT:i:1}" == '"' ]] && instring=0
+            out+=${INPUT:i:1}
+            (( i++ ))
+            continue
+        fi
         if (( i + 1 < len )) && [[ "${INPUT:i:2}" == '//' ]]; then
             while (( i < len )) && [[ "${INPUT:i:1}" != $'\n' ]]; do (( i++ )); done
         elif (( i + 1 < len )) && [[ "${INPUT:i:2}" == '/*' ]]; then
@@ -40,6 +52,7 @@ strip_comments() {
             if (( i + 1 >= len )); then printf 'error: unterminated comment at pos %d\n' "$i" >&2; return 1; fi
             i=$((i+2))
         else
+            if [[ "${INPUT:i:1}" == '"' ]]; then instring=1; fi
             out+=${INPUT:i:1}
             (( i++ ))
         fi
