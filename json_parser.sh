@@ -37,7 +37,8 @@ strip_comments() {
         elif (( i + 1 < len )) && [[ "${INPUT:i:2}" == '/*' ]]; then
             i=$((i+2))
             while (( i + 1 < len )) && [[ "${INPUT:i:2}" != '*/' ]]; do (( i++ )); done
-            (( i < len )) && i=$((i+2))
+            if (( i + 1 >= len )); then printf 'error: unterminated comment at pos %d\n' "$i" >&2; return 1; fi
+            i=$((i+2))
         else
             out+=${INPUT:i:1}
             (( i++ ))
