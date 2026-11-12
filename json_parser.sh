@@ -465,6 +465,9 @@ parse_args() {
             -)
                 break
                 ;;
+            -[0-9]*)
+                break
+                ;;
             -*)
                 printf 'error: unknown option %s\n' "$1" >&2
                 exit 2
@@ -519,7 +522,7 @@ main() {
     print_result
 }
 
-# new code goes above this line
+# === new functions go here ===
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     main "$@"
