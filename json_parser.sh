@@ -291,7 +291,7 @@ main() {
     init_parser "$json"
     if [[ -z "$json" ]]; then printf 'error: empty input\n' >&2; exit 1; fi
     parse_document
-    printf '%s\n' "$VAL"
+    if [[ "${INPUT:0:1}" == '"' ]]; then printf '"%s"\n' "$VAL"; else printf '%s\n' "$VAL"; fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
