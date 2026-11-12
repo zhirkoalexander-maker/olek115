@@ -309,6 +309,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     if [[ "${1-}" == '--allow-duplicate-keys' ]]; then ALLOW_DUPLICATE_KEYS=1; shift; fi
     if [[ "${1-}" == '-q' || "${1-}" == '--quiet' ]]; then QUIET=1; shift; fi
     if [[ "${1-}" == '--allow-trailing-comma' ]]; then ALLOW_TRAILING_COMMA=1; shift; fi
+    if [[ "${1-}" == '--allow-comments' ]]; then ALLOW_COMMENTS=1; shift; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
