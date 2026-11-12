@@ -182,6 +182,8 @@ parse_string() {
         POS=$((POS+1))
     done
     expect_char '"'
+    out="${out//\\/\\\\}"
+    out="${out//\"/\\\"}"
     VAL="$out"
 }
 
