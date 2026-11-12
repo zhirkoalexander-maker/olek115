@@ -8,6 +8,7 @@ LEN=0
 CH=""
 VAL=""
 VERSION="0.3.0"
+MAX_DEPTH=128
 
 init_parser() {
     INPUT="$1"
