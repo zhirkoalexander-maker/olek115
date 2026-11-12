@@ -289,7 +289,7 @@ main() {
         json=$(cat)
     fi
     init_parser "$json"
-    if [[ -z "$json" ]]; then printf 'error: empty input\n' >&2; exit 1; fi
+    if [[ "${json//[[:space:]]/}" == '' ]]; then printf 'error: empty input\n' >&2; exit 1; fi
     parse_document
     if [[ "${INPUT:0:1}" == '"' ]]; then printf '"%s"\n' "$VAL"; else printf '%s\n' "$VAL"; fi
 }
