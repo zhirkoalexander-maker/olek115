@@ -11,6 +11,7 @@ VERSION="0.3.0"
 MAX_DEPTH=128
 MAX_SIZE=1000000
 VALIDATE_ONLY=0
+ALLOW_DUPLICATE_KEYS=0
 
 init_parser() {
     INPUT="$1"
@@ -248,7 +249,7 @@ parse_object() {
         if [[ "$CH" == '"' ]]; then
             parse_string
             local key="$VAL"
-            if [[ "$keys" == *$'\n'"$key"$'\n'* ]]; then printf 'error: duplicate key %q at pos %d\n' "$key" "$((POS - ${#key} - 2))" >&2; return 1; fi
+            if (( ! ALLOW_DUPLICATE_KEYS )) && [[ "$keys" == *$'\n'"$key"$'\n'* ]]; then printf 'error: duplicate key %q at pos %d\n' "$key" "$((POS - ${#key} - 2))" >&2; return 1; fi
             keys+="$key"$'\n'
             skip_whitespace
             expect_char ':'
@@ -297,6 +298,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     if [[ "${1-}" == '--validate' ]]; then VALIDATE_ONLY=1; shift; fi
     if [[ "${1-}" == '--max-depth' ]]; then MAX_DEPTH="$2"; shift 2; fi
     if [[ "${1-}" == '--max-size' ]]; then MAX_SIZE="$2"; shift 2; fi
+    if [[ "${1-}" == '--allow-duplicate-keys' ]]; then ALLOW_DUPLICATE_KEYS=1; shift; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
