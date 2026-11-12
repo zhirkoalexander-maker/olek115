@@ -247,7 +247,7 @@ parse_object() {
             parse_value
             local vend="$POS"
             local raw="${INPUT:vstart:vend-vstart}"
-            if [[ "$key" == *[[:space:]=]* || "$key" == *\"* ]]; then key="\"$key\""; fi
+            if [[ "$key" == *[[:space:]=]* || "$key" == *\"* || -z "$key" ]]; then key="\"$key\""; fi
             if [[ "${raw:0:1}" == '"' ]]; then obj+=("$key=\"$VAL\""); else obj+=("$key=$raw"); fi
         else
             printf 'error: expected object key at pos %d\n' "$POS" >&2
