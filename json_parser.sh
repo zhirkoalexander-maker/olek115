@@ -12,6 +12,7 @@ MAX_DEPTH=128
 MAX_SIZE=1000000
 VALIDATE_ONLY=0
 ALLOW_DUPLICATE_KEYS=0
+QUIET=0
 
 init_parser() {
     INPUT="$1"
@@ -299,6 +300,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     if [[ "${1-}" == '--max-depth' ]]; then MAX_DEPTH="$2"; shift 2; fi
     if [[ "${1-}" == '--max-size' ]]; then MAX_SIZE="$2"; shift 2; fi
     if [[ "${1-}" == '--allow-duplicate-keys' ]]; then ALLOW_DUPLICATE_KEYS=1; shift; fi
+    if [[ "${1-}" == '-q' || "${1-}" == '--quiet' ]]; then QUIET=1; shift; fi
     if (( $# > 0 )) && [[ "$1" == -* ]] && [[ "$1" != '-' ]] && [[ "$1" != '--' ]]; then printf 'error: unknown option %s\n' "$1" >&2; exit 2; fi
     if (( $# > 0 )); then
         if [[ "$1" == '--' ]]; then
@@ -318,7 +320,7 @@ if [[ "${1-}" == '-h' || "${1-}" == '--help' ]]; then printf 'usage: %s [json|fi
     init_parser "$json"
     if [[ "${json//[[:space:]]/}" == '' ]]; then printf 'error: empty input\n' >&2; exit 1; fi
     parse_document
-    if (( VALIDATE_ONLY )); then exit 0; fi
+    if (( VALIDATE_ONLY || QUIET )); then exit 0; fi
     if [[ "${INPUT:0:1}" == '"' ]]; then printf '"%s"\n' "$VAL"; else printf '%s\n' "$VAL"; fi
 }
 
