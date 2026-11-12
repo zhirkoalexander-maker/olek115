@@ -20,9 +20,30 @@ init_parser() {
     INPUT="$1"
     INPUT="${INPUT#$'\xEF\xBB\xBF'}"
     if (( ${#INPUT} > MAX_SIZE )); then printf 'error: input too large\n' >&2; exit 1; fi
+    strip_comments
     POS=0
     LEN=${#INPUT}
     DEPTH=0
+}
+
+strip_comments() {
+    if (( ! ALLOW_COMMENTS )); then return; fi
+    local out=""
+    local i=0
+    local len=${#INPUT}
+    while (( i < len )); do
+        if (( i + 1 < len )) && [[ "${INPUT:i:2}" == '//' ]]; then
+            while (( i < len )) && [[ "${INPUT:i:1}" != $'\n' ]]; do (( i++ )); done
+        elif (( i + 1 < len )) && [[ "${INPUT:i:2}" == '/*' ]]; then
+            i=$((i+2))
+            while (( i + 1 < len )) && [[ "${INPUT:i:2}" != '*/' ]]; do (( i++ )); done
+            (( i < len )) && i=$((i+2))
+        else
+            out+=${INPUT:i:1}
+            (( i++ ))
+        fi
+    done
+    INPUT="$out"
 }
 
 peek_char() {
