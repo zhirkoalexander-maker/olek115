@@ -35,91 +35,46 @@ check_error() {
     fi
 }
 
-check_filter() {
-    local name="$1"
-    local needle="$2"
-    local input="$3"
-    local expected="$4"
-    local got
-    got="$("$PARSER" --filter "$needle" "$input" 2>/dev/null)"
-    if [[ "$got" == "$expected" ]]; then
-        PASS=$((PASS + 1))
-    else
-        FAIL=$((FAIL + 1))
-        printf 'FAIL %s\n' "$name"
-        printf '  needle:   %s\n' "$needle"
-        printf '  input:    %s\n' "$input"
-        printf '  expected: %s\n' "$expected"
-        printf '  got:      %s\n' "$got"
-    fi
-}
-
-check_flag() {
-    local name="$1"
-    local flag="$2"
-    local input="$3"
-    local expected="$4"
-    local got
-    got="$("$PARSER" "$flag" "$input" 2>/dev/null)"
-    if [[ "$got" == "$expected" ]]; then
-        PASS=$((PASS + 1))
-    else
-        FAIL=$((FAIL + 1))
-        printf 'FAIL %s\n' "$name"
-        printf '  flag:     %s\n' "$flag"
-        printf '  input:    %s\n' "$input"
-        printf '  expected: %s\n' "$expected"
-        printf '  got:      %s\n' "$got"
-    fi
-}
-
 check 'object'            '{"a":1}'                     'a=1'
-check 'object many'       '{"a":1,"b":2}'               $'a=1\nb=2'
-check 'object empty'      '{}'                          '(root)={}'
-check 'object nested'     '{"a":{"b":2}}'               'a.b=2'
-check 'object deep'       '{"a":{"b":{"c":1}}}'          'a.b.c=1'
+check 'object many'       '{"a":1,"b":2}'               'a=1 b=2'
+check 'object empty'      '{}'                          '{}'
+check 'object nested'     '{"a":{"b":2}}'               'a={"b":2}'
+check 'object deep'       '{"a":{"b":{"c":1}}}'          'a={"b":{"c":1}}'
 check 'object spaces'     '{ "a" : 1 }'                 'a=1'
 check 'object key space'  '{"a b":1}'                   '"a b"=1'
 check 'object empty key'  '{"":1}'                      '""=1'
 check 'object quote key'  '{"a\"b":1}'                  '"a\"b"=1'
 
-check 'array'             '[1,2,3]'                     $'[0]=1\n[1]=2\n[2]=3'
-check 'array empty'       '[]'                          '(root)=[]'
-check 'array nested'      '[[1,2],3]'                   $'[0][0]=1\n[0][1]=2\n[1]=3'
-check 'array objects'     '[{"a":1}]'                   '[0].a=1'
-check 'array strings'     '["a","b"]'                   $'[0]="a"\n[1]="b"'
-check 'array spaces'      '[ 1 , 2 ]'                   $'[0]=1\n[1]=2'
+check 'array'             '[1,2,3]'                     '1 2 3'
+check 'array empty'       '[]'                          '[]'
+check 'array nested'      '[[1,2],3]'                   '[1,2] 3'
+check 'array objects'     '[{"a":1}]'                   '{"a":1}'
+check 'array strings'     '["a","b"]'                   '"a" "b"'
+check 'array spaces'      '[ 1 , 2 ]'                   '1 2'
 
-check 'string'            '"hello"'                     '(root)="hello"'
-check 'string empty'      '""'                          '(root)=""'
-check 'string quote'      '"a\"b"'                      '(root)="a\"b"'
-check 'string backslash'  '"a\\b"'                      '(root)="a\\b"'
-check 'string spaces'     '"a b"'                       '(root)="a b"'
+check 'string'            '"hello"'                     '"hello"'
+check 'string empty'      '""'                          '""'
+check 'string quote'      '"a\"b"'                      '"a\"b"'
+check 'string backslash'  '"a\\b"'                      '"a\\b"'
+check 'string spaces'     '"a b"'                       '"a b"'
 
-check 'number int'        '42'                          '(root)=42'
-check 'number zero'       '0'                           '(root)=0'
-check 'number negative'   '-17'                         '(root)=-17'
-check 'number float'      '3.14'                        '(root)=3.14'
-check 'number exponent'   '1e3'                         '(root)=1e3'
-check 'number exponent 2' '1E-3'                        '(root)=1E-3'
+check 'number int'        '42'                          '42'
+check 'number zero'       '0'                           '0'
+check 'number negative'   '-17'                         '-17'
+check 'number float'      '3.14'                        '3.14'
+check 'number exponent'   '1e3'                         '1e3'
+check 'number exponent 2' '1E-3'                        '1E-3'
 
-check 'true'              'true'                        '(root)=true'
-check 'false'             'false'                       '(root)=false'
-check 'null'              'null'                        '(root)=null'
+check 'true'              'true'                        'true'
+check 'false'             'false'                       'false'
+check 'null'              'null'                        'null'
 
-check 'escape newline'    '"a\nb"'                      '(root)="a\nb"'
-check 'escape tab'        '"a\tb"'                      '(root)="a\tb"'
-check 'escape slash'      '"a\/b"'                      '(root)="a/b"'
-check 'unicode'           '"é"'                   '(root)="é"'
-check 'unicode cjk'       '"中"'                   '(root)="中"'
-check 'unicode emoji'     '"\uD83D\uDE00"'               '(root)="😀"'
-
-check_flag 'paths'        '--paths'    '{"a":{"b":1}}'  'a.b'
-check_flag 'types'        '--types'    '{"a":1}'        'a:number=1'
-check_flag 'json'         '--json'     '{"a":[1]}'      '{"a":[1]}'
-check_flag 'count'        '--count'    '{"a":1,"b":2}'  '2'
-check_filter 'filter'     'b'          '{"a":1,"b":2}'  'b=2'
-check_flag 'sort'         '--sort'     '{"z":1,"a":2}'  $'a=2\nz=1'
+check 'escape newline'    '"a\nb"'                      $'"a\nb"'
+check 'escape tab'        '"a\tb"'                      $'"a\tb"'
+check 'escape slash'      '"a\/b"'                      '"a/b"'
+check 'unicode'           '"é"'                   '"é"'
+check 'unicode cjk'       '"中"'                   '"中"'
+check 'unicode emoji'     '"\uD83D\uDE00"'               '"😀"'
 
 check_error 'no value'        '{"a":}'
 check_error 'no comma'        '{"a" 1}'

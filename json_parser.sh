@@ -10,31 +10,14 @@ VAL=""
 DEPTH=0
 SOURCE=""
 
-VERSION="1.0.0"
+VERSION="0.3.0"
 MAX_DEPTH=128
 MAX_SIZE=1000000
-
-MODE=flat
 VALIDATE_ONLY=0
 QUIET=0
-SORT_OUTPUT=0
-FILTER=""
-SHOW_TYPES=0
-SHOW_PATHS_ONLY=0
-COUNT_ONLY=0
-PRETTY=0
 ALLOW_DUPLICATE_KEYS=0
 ALLOW_TRAILING_COMMA=0
 ALLOW_COMMENTS=0
-
-N_TYPE=()
-N_PATH=()
-N_VALUE=()
-N_KEY=()
-N_KIDS=()
-LEAVES=()
-ROOT_ID=0
-N_ID=0
 
 peek_char() {
     CH=""
@@ -77,7 +60,7 @@ expect_word() {
     local word="$1"
     local i
     for (( i = 0; i < ${#word}; i++ )); do
-        expect_char "${word:i:1}" || return 1
+        expect_char "${word:i:1}"
     done
 }
 
@@ -141,57 +124,23 @@ strip_comments() {
     INPUT="$out"
 }
 
-add_node() {
-    local type="$1"
-    local path="$2"
-    local value="$3"
-    local key="$4"
-    N_TYPE+=("$type")
-    N_PATH+=("$path")
-    N_VALUE+=("$value")
-    N_KEY+=("$key")
-    N_KIDS+=("")
-    N_ID=$(( ${#N_TYPE[@]} ))
-}
-
-add_leaf() {
-    add_node "$1" "$2" "$3" "$4"
-    LEAVES+=("$N_ID")
-}
-
-node_kids() {
-    local kids="${N_KIDS[$(( $1 - 1 ))]}"
-    printf '%s' "$kids"
-}
-
-node_has_kids() {
-    local kids="${N_KIDS[$(( $1 - 1 ))]}"
-    if [[ -z "$kids" ]]; then
-        return 1
-    fi
-    return 0
-}
-
 parse_null() {
-    local path="$1"
-    expect_word 'null' || return 1
-    add_leaf null "$path" 'null' ""
+    expect_word 'null'
+    VAL='null'
 }
 
 parse_bool() {
-    local path="$1"
     peek_char
     if [[ "$CH" == 't' ]]; then
-        expect_word 'true' || return 1
-        add_leaf boolean "$path" 'true' ""
+        expect_word 'true'
+        VAL='true'
     else
-        expect_word 'false' || return 1
-        add_leaf boolean "$path" 'false' ""
+        expect_word 'false'
+        VAL='false'
     fi
 }
 
 parse_number() {
-    local path="$1"
     local num=""
     while (( POS < LEN )); do
         peek_char
@@ -208,7 +157,7 @@ parse_number() {
         printf 'error: invalid number %q at pos %d\n' "$num" "$POS" >&2
         return 1
     fi
-    add_leaf number "$path" "$num" ""
+    VAL="$num"
 }
 
 decode_escape_u() {
@@ -226,7 +175,7 @@ decode_escape_u() {
         fi
         local low=$((16#${pair:2:4}))
         if (( low < 0xDC00 || low > 0xDFFF )); then
-            printf 'error: unpaired surrogate %s at pos %d\n' "$hex" "$POS" >&2
+            printf 'error: unpaired surrogate %s at pos %d\n' "$hex" >&2
             return 1
         fi
         cp=$((0x10000 + ((cp - 0xD800) * 1024) + (low - 0xDC00)))
@@ -253,8 +202,8 @@ decode_escape_u() {
     POS=$((POS + 4))
 }
 
-parse_string_raw() {
-    expect_char '"' || return 1
+parse_string() {
+    expect_char '"'
     local out=""
     while (( POS < LEN )); do
         peek_char
@@ -287,117 +236,39 @@ parse_string_raw() {
         out+="$CH"
         POS=$((POS + 1))
     done
-    expect_char '"' || return 1
+    expect_char '"'
+    out="${out//\\/\\\\}"
+    out="${out//\"/\\\"}"
     VAL="$out"
 }
 
-parse_string() {
-    local path="$1"
-    parse_string_raw || return 1
-    add_leaf string "$path" "$VAL" ""
-}
-
-parse_object() {
-    local path="$1"
-    expect_char '{' || return 1
-    skip_whitespace
-    if (( DEPTH >= MAX_DEPTH )); then
-        printf 'error: max depth exceeded\n' >&2
-        return 1
-    fi
-    DEPTH=$((DEPTH + 1))
-    add_node object "$path" "" ""
-    local id="$N_ID"
-    local keys=$'\n'
-    peek_char
-    if [[ "$CH" == '}' ]]; then
-        expect_char '}' || return 1
-        DEPTH=$((DEPTH - 1))
-        add_leaf object "$path" '{}' ""
-        N_ID="$id"
-        return 0
-    fi
-    while true; do
-        skip_whitespace
-        peek_char
-        if [[ "$CH" != '"' ]]; then
-            printf 'error: expected object key at pos %d\n' "$POS" >&2
-            return 1
-        fi
-        local keypos="$POS"
-        parse_string_raw || return 1
-        local key="$VAL"
-        if (( ! ALLOW_DUPLICATE_KEYS )) && [[ "$keys" == *$'\n'"$key"$'\n'* ]]; then
-            printf 'error: duplicate key %q at pos %d\n' "$key" "$keypos" >&2
-            return 1
-        fi
-        keys+="$key"$'\n'
-        skip_whitespace
-        expect_char ':' || return 1
-        skip_whitespace
-        local childpath="$key"
-        if [[ ! "$key" =~ ^[A-Za-z0-9_-]+$ ]]; then
-            childpath="$(json_quote "$key")"
-        fi
-        if [[ -n "$path" ]]; then
-            childpath="$path.$childpath"
-        fi
-        parse_value "$childpath" || return 1
-        local child="$N_ID"
-        N_KIDS[$(( id - 1 ))]="${N_KIDS[$(( id - 1 ))]} $child"
-        N_KEY[$(( child - 1 ))]="$key"
-        skip_whitespace
-        peek_char
-        if [[ "$CH" == ',' ]]; then
-            POS=$((POS + 1))
-            skip_whitespace
-            peek_char
-            if (( ALLOW_TRAILING_COMMA )) && [[ "$CH" == '}' ]]; then
-                break
-            fi
-            continue
-        elif [[ "$CH" == '}' ]]; then
-            break
-        else
-            printf 'error: expected comma or closing brace at pos %d\n' "$POS" >&2
-            return 1
-        fi
-    done
-    expect_char '}' || return 1
-    DEPTH=$((DEPTH - 1))
-    N_ID="$id"
-}
-
 parse_array() {
-    local path="$1"
-    expect_char '[' || return 1
+    expect_char '['
     skip_whitespace
     if (( DEPTH >= MAX_DEPTH )); then
         printf 'error: max depth exceeded\n' >&2
         return 1
     fi
     DEPTH=$((DEPTH + 1))
-    add_node array "$path" "" ""
-    local id="$N_ID"
+    local arr=()
     peek_char
     if [[ "$CH" == ']' ]]; then
-        expect_char ']' || return 1
+        expect_char ']'
         DEPTH=$((DEPTH - 1))
-        add_leaf array "$path" '[]' ""
-        N_ID="$id"
-        return 0
+        VAL='[]'
+        return
     fi
-    local index=0
     while true; do
         skip_whitespace
-        local childpath="[$index]"
-        if [[ -n "$path" ]]; then
-            childpath="$path[$index]"
+        local astart="$POS"
+        parse_value
+        local aend="$POS"
+        local araw="${INPUT:astart:aend-astart}"
+        if [[ "${araw:0:1}" == '"' ]]; then
+            arr+=("\"$VAL\"")
+        else
+            arr+=("$araw")
         fi
-        parse_value "$childpath" || return 1
-        local child="$N_ID"
-        N_KIDS[$(( id - 1 ))]="${N_KIDS[$(( id - 1 ))]} $child"
-        index=$((index + 1))
         skip_whitespace
         peek_char
         if [[ "$CH" == ',' ]]; then
@@ -415,22 +286,90 @@ parse_array() {
             return 1
         fi
     done
-    expect_char ']' || return 1
+    expect_char ']'
     DEPTH=$((DEPTH - 1))
-    N_ID="$id"
+    VAL="${arr[*]}"
+}
+
+parse_object() {
+    expect_char '{'
+    skip_whitespace
+    if (( DEPTH >= MAX_DEPTH )); then
+        printf 'error: max depth exceeded\n' >&2
+        return 1
+    fi
+    DEPTH=$((DEPTH + 1))
+    local obj=()
+    local keys=$'\n'
+    peek_char
+    if [[ "$CH" == '}' ]]; then
+        expect_char '}'
+        DEPTH=$((DEPTH - 1))
+        VAL='{}'
+        return
+    fi
+    while true; do
+        skip_whitespace
+        peek_char
+        if [[ "$CH" != '"' ]]; then
+            printf 'error: expected object key at pos %d\n' "$POS" >&2
+            return 1
+        fi
+        local keypos="$POS"
+        parse_string
+        local key="$VAL"
+        if (( ! ALLOW_DUPLICATE_KEYS )) && [[ "$keys" == *$'\n'"$key"$'\n'* ]]; then
+            printf 'error: duplicate key %q at pos %d\n' "$key" "$keypos" >&2
+            return 1
+        fi
+        keys+="$key"$'\n'
+        skip_whitespace
+        expect_char ':'
+        skip_whitespace
+        local vstart="$POS"
+        parse_value
+        local vend="$POS"
+        local raw="${INPUT:vstart:vend-vstart}"
+        if [[ "$key" == *[[:space:]=]* || "$key" == *\"* || -z "$key" ]]; then
+            key="\"$key\""
+        fi
+        if [[ "${raw:0:1}" == '"' ]]; then
+            obj+=("$key=\"$VAL\"")
+        else
+            obj+=("$key=$raw")
+        fi
+        skip_whitespace
+        peek_char
+        if [[ "$CH" == ',' ]]; then
+            POS=$((POS + 1))
+            skip_whitespace
+            peek_char
+            if (( ALLOW_TRAILING_COMMA )) && [[ "$CH" == '}' ]]; then
+                break
+            fi
+            continue
+        elif [[ "$CH" == '}' ]]; then
+            break
+        else
+            printf 'error: expected comma or closing brace at pos %d\n' "$POS" >&2
+            return 1
+        fi
+    done
+    expect_char '}'
+    DEPTH=$((DEPTH - 1))
+    VAL="${obj[*]}"
 }
 
 parse_value() {
-    local path="$1"
     skip_whitespace
     peek_char
     case "$CH" in
-        '{') parse_object "$path" ;;
-        '[') parse_array "$path" ;;
-        '"') parse_string "$path" ;;
-        't'|'f') parse_bool "$path" ;;
-        'n') parse_null "$path" ;;
-        -|[0-9]) parse_number "$path" ;;
+        '{') parse_object ;;
+        '[') parse_array ;;
+        '"') parse_string ;;
+        't'|'f') parse_bool ;;
+        'n') parse_null ;;
+        -|[0-9]) parse_number ;;
         '')
             printf 'error: unexpected end of input at pos %d\n' "$POS" >&2
             return 1
@@ -444,8 +383,7 @@ parse_value() {
 
 parse_document() {
     skip_whitespace
-    parse_value "" || return 1
-    ROOT_ID="$N_ID"
+    parse_value
     skip_whitespace
     if (( POS < LEN )); then
         printf 'error: trailing data at pos %d: %q\n' "$POS" "${INPUT:POS:10}" >&2
@@ -453,244 +391,27 @@ parse_document() {
     fi
 }
 
-json_quote() {
-    local text="$1"
-    local out=""
-    local i=0
-    local len=${#text}
-    while (( i < len )); do
-        local ch="${text:i:1}"
-        case "$ch" in
-            '"') out+='\"' ;;
-            '\') out+='\\' ;;
-            $'\n') out+='\n' ;;
-            $'\t') out+='\t' ;;
-            $'\r') out+='\r' ;;
-            $'\b') out+='\b' ;;
-            $'\f') out+='\f' ;;
-            *)
-                if [[ "$ch" == [[:cntrl:]] ]]; then
-                    out+=$(printf '\\u%04x' "'$ch")
-                else
-                    out+="$ch"
-                fi
-                ;;
-        esac
-        i=$((i + 1))
-    done
-    printf '"%s"' "$out"
-}
-
-json_compact() {
-    local id="$1"
-    local type="${N_TYPE[$(( id - 1 ))]}"
-    case "$type" in
-        object)
-            local out="{"
-            local first=1
-            local kid
-            for kid in $(node_kids "$id"); do
-                if (( first )); then
-                    first=0
-                else
-                    out+=","
-                fi
-                out+="$(json_quote "${N_KEY[$(( kid - 1 ))]}")"
-                out+=":"
-                out+="$(json_compact "$kid")"
-            done
-            out+="}"
-            printf '%s' "$out"
-            ;;
-        array)
-            local out="["
-            local first=1
-            local kid
-            for kid in $(node_kids "$id"); do
-                if (( first )); then
-                    first=0
-                else
-                    out+=","
-                fi
-                out+="$(json_compact "$kid")"
-            done
-            out+="]"
-            printf '%s' "$out"
-            ;;
-        string)
-            json_quote "${N_VALUE[$(( id - 1 ))]}"
-            ;;
-        *)
-            printf '%s' "${N_VALUE[$(( id - 1 ))]}"
-            ;;
-    esac
-}
-
-json_indent() {
-    local level="$1"
-    local pad=""
-    local i
-    for (( i = 0; i < level; i++ )); do
-        pad+="  "
-    done
-    printf '%s' "$pad"
-}
-
-json_pretty() {
-    local id="$1"
-    local level="$2"
-    local type="${N_TYPE[$(( id - 1 ))]}"
-    case "$type" in
-        object)
-            if ! node_has_kids "$id"; then
-                printf '{}'
-                return
-            fi
-            printf '{\n'
-            local total=0
-            local kid
-            for kid in $(node_kids "$id"); do
-                total=$((total + 1))
-            done
-            local i=0
-            for kid in $(node_kids "$id"); do
-                i=$((i + 1))
-                printf '%s%s: ' "$(json_indent $((level + 1)))" "$(json_quote "${N_KEY[$(( kid - 1 ))]}")"
-                json_pretty "$kid" $((level + 1))
-                if (( i < total )); then
-                    printf ',\n'
-                else
-                    printf '\n'
-                fi
-            done
-            printf '%s}' "$(json_indent $level)"
-            ;;
-        array)
-            if ! node_has_kids "$id"; then
-                printf '[]'
-                return
-            fi
-            printf '[\n'
-            local total=0
-            local kid
-            for kid in $(node_kids "$id"); do
-                total=$((total + 1))
-            done
-            local i=0
-            for kid in $(node_kids "$id"); do
-                i=$((i + 1))
-                printf '%s' "$(json_indent $((level + 1)))"
-                json_pretty "$kid" $((level + 1))
-                if (( i < total )); then
-                    printf ',\n'
-                else
-                    printf '\n'
-                fi
-            done
-            printf '%s]' "$(json_indent $level)"
-            ;;
-        string)
-            json_quote "${N_VALUE[$(( id - 1 ))]}"
-            ;;
-        *)
-            printf '%s' "${N_VALUE[$(( id - 1 ))]}"
-            ;;
-    esac
-}
-
-leaf_display() {
-    local id="$1"
-    local path="${N_PATH[$(( id - 1 ))]}"
-    local type="${N_TYPE[$(( id - 1 ))]}"
-    local value="${N_VALUE[$(( id - 1 ))]}"
-    if [[ "$type" == "string" ]]; then
-        value="$(json_quote "$value")"
-    fi
-    local shown="$path"
-    if [[ -z "$shown" ]]; then
-        shown="(root)"
-    fi
-    if (( SHOW_TYPES )); then
-        printf '%s:%s=%s' "$shown" "$type" "$value"
-    else
-        printf '%s=%s' "$shown" "$value"
-    fi
-}
-
-collect_output() {
-    local id
-    local line
-    if (( ${#LEAVES[@]} == 0 )); then
-        return
-    fi
-    for id in "${LEAVES[@]}"; do
-        if [[ -n "$FILTER" ]]; then
-            local path="${N_PATH[$(( id - 1 ))]}"
-            if [[ "$path" != *"$FILTER"* ]]; then
-                continue
-            fi
-        fi
-        if (( SHOW_PATHS_ONLY )); then
-            line="${N_PATH[$(( id - 1 ))]}"
-            if [[ -z "$line" ]]; then
-                line="(root)"
-            fi
-        else
-            line="$(leaf_display "$id")"
-        fi
-        printf '%s\n' "$line"
-    done
-}
-
 print_result() {
-    if (( COUNT_ONLY )); then
-        printf '%d\n' "${#LEAVES[@]}"
-        return
-    fi
-    if [[ "$MODE" == "json" ]]; then
-        if (( PRETTY )); then
-            json_pretty "$ROOT_ID" 0
-            printf '\n'
-        else
-            json_compact "$ROOT_ID"
-            printf '\n'
-        fi
-        return
-    fi
-    local output
-    output="$(collect_output)"
-    if [[ -n "$output" ]]; then
-        if (( SORT_OUTPUT )); then
-            printf '%s\n' "$output" | sort
-        else
-            printf '%s\n' "$output"
-        fi
+    if [[ "${INPUT:0:1}" == '"' ]]; then
+        printf '"%s"\n' "$VAL"
+    else
+        printf '%s\n' "$VAL"
     fi
 }
 
 usage() {
     printf 'usage: %s [options] [json|file]\n' "$0"
     printf '\n'
-    printf 'modes:\n'
-    printf '  (default)             key=value pairs, one per line\n'
-    printf '  --paths               only the paths, one per line\n'
-    printf '  --types               add the type of every value\n'
-    printf '  --json                print the json back, rebuilt from the tree\n'
-    printf '  --pretty              indent the --json output\n'
-    printf '  --count               print how many values were found\n'
-    printf '\n'
     printf 'options:\n'
-    printf '  -h, --help            show this help\n'
-    printf '  -v, --version         show version\n'
-    printf '  -q, --quiet           no output, only exit status\n'
-    printf '  --validate            check the json and exit\n'
-    printf '  --sort                sort the output lines\n'
-    printf '  --filter TEXT         keep only paths containing TEXT\n'
-    printf '  --max-depth N         nesting depth limit (default %d)\n' "$MAX_DEPTH"
-    printf '  --max-size N          input size limit in bytes (default %d)\n' "$MAX_SIZE"
-    printf '  --allow-duplicate-keys accept duplicate object keys\n'
-    printf '  --allow-trailing-comma accept a trailing comma\n'
-    printf '  --allow-comments      accept // and /* */ comments\n'
+    printf '  -h, --help              show this help\n'
+    printf '  -v, --version           show version\n'
+    printf '  -q, --quiet             no output, only exit status\n'
+    printf '  --validate              check the json and exit\n'
+    printf '  --max-depth N           nesting depth limit (default %d)\n' "$MAX_DEPTH"
+    printf '  --max-size N            input size limit in bytes (default %d)\n' "$MAX_SIZE"
+    printf '  --allow-duplicate-keys  accept duplicate object keys\n'
+    printf '  --allow-trailing-comma  accept a trailing comma\n'
+    printf '  --allow-comments        accept // and /* */ comments\n'
     printf '\n'
     printf 'the json can be an argument, a file path, or read from stdin\n'
 }
@@ -711,33 +432,6 @@ parse_args() {
                 ;;
             --validate)
                 VALIDATE_ONLY=1
-                ;;
-            --paths)
-                SHOW_PATHS_ONLY=1
-                ;;
-            --types)
-                SHOW_TYPES=1
-                ;;
-            --json)
-                MODE=json
-                ;;
-            --pretty)
-                PRETTY=1
-                MODE=json
-                ;;
-            --count)
-                COUNT_ONLY=1
-                ;;
-            --sort)
-                SORT_OUTPUT=1
-                ;;
-            --filter)
-                if (( $# < 2 )); then
-                    printf 'error: --filter needs a text\n' >&2
-                    exit 2
-                fi
-                FILTER="$2"
-                shift
                 ;;
             --allow-duplicate-keys)
                 ALLOW_DUPLICATE_KEYS=1
@@ -827,6 +521,8 @@ main() {
     fi
     print_result
 }
+
+# === new functions go here ===
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     main "$@"
