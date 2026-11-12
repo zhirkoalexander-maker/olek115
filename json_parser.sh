@@ -16,6 +16,7 @@ init_parser() {
     if (( ${#INPUT} > 1000000 )); then printf 'error: input too large\n' >&2; exit 1; fi
     POS=0
     LEN=${#INPUT}
+    DEPTH=0
 }
 
 peek_char() {
@@ -228,6 +229,7 @@ parse_array() {
 parse_object() {
     expect_char '{'
     skip_whitespace
+    if (( DEPTH++ >= MAX_DEPTH )); then printf 'error: max depth exceeded\n' >&2; return 1; fi
     local obj=()
     local keys=$'\n'
     peek_char
@@ -271,6 +273,7 @@ parse_object() {
     done
     expect_char '}'
     VAL="${obj[*]}"
+    (( DEPTH-- ))
 }
 
 parse_document() {
