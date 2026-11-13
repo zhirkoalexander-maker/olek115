@@ -80,6 +80,8 @@ b="x"
 | `--paths` | only the paths |
 | `--types` | the path with the type of the value |
 | `--count` | how many values were found |
+| `--json` | print the json back in one line |
+| `--pretty` | print the json back with indentation |
 | `--sort` | the output, sorted |
 | `--filter TEXT` | only the paths that contain TEXT |
 
@@ -102,6 +104,16 @@ z=1
 
 $ json_parser --filter tag '{"tag":1,"other":2}'
 tag=1
+
+$ json_parser --json '{ "a" : 1 }'
+{"a":1}
+
+$ json_parser --pretty '{"a":{"b":1}}'
+{
+  "a": {
+    "b": 1
+  }
+}
 ```
 
 ## Paths

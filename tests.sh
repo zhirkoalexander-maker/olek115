@@ -22,6 +22,25 @@ check() {
     fi
 }
 
+check_flag() {
+    local name="$1"
+    local flag="$2"
+    local input="$3"
+    local expected="$4"
+    local got
+    got="$("$PARSER" "$flag" "$input" 2>/dev/null)"
+    if [[ "$got" == "$expected" ]]; then
+        PASS=$((PASS + 1))
+    else
+        FAIL=$((FAIL + 1))
+        printf 'FAIL %s\n' "$name"
+        printf '  flag:     %s\n' "$flag"
+        printf '  input:    %s\n' "$input"
+        printf '  expected: %s\n' "$expected"
+        printf '  got:      %s\n' "$got"
+    fi
+}
+
 check_error() {
     local name="$1"
     local input="$2"
@@ -79,6 +98,14 @@ check 'unicode emoji'     '"\uD83D\uDE00"'               '(root)="😀"'
 
 check 'empty container'   '{"a":{},"b":[]}'             $'a={}\nb=[]'
 check 'mixed'            '{"a":1,"b":{"c":2},"d":[3]}'  $'a=1\nb.c=2\nd[0]=3'
+
+check_flag 'json'         '--json'   '{"a":1,"b":[2]}'  '{"a":1,"b":[2]}'
+check_flag 'json spaces'   '--json'   '{ "a" : 1 }'      '{"a":1}'
+check_flag 'json string'   '--json'   '{"s":"a,b"}'      '{"s":"a,b"}'
+check_flag 'pretty'        '--pretty' '{"a":1}'          $'{\n  "a": 1\n}'
+check_flag 'pretty deep'   '--pretty' '{"a":{"b":1}}'    $'{\n  "a": {\n    "b": 1\n  }\n}'
+check_flag 'pretty empty'  '--pretty' '{"a":{}}'        $'{\n  "a": {}\n}'
+check_flag 'pretty array'  '--pretty' '[1,2]'           $'[\n  1,\n  2\n]'
 
 check_error 'no value'        '{"a":}'
 check_error 'no comma'        '{"a" 1}'

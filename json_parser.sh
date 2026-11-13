@@ -405,6 +405,10 @@ parse_document() {
 }
 
 print_result() {
+    if [[ "$MODE" == 'json' || "$MODE" == 'pretty' ]]; then
+        format_json
+        return
+    fi
     print_mode
 }
 
@@ -416,6 +420,8 @@ usage() {
     printf '  --paths                only the paths\n'
     printf '  --types                path with the type of the value\n'
     printf '  --count                how many values were found\n'
+    printf '  --json                 print the json back in one line\n'
+    printf '  --pretty               print the json back with indentation\n'
     printf '  --sort                 sort the output\n'
     printf '  --filter TEXT          keep only paths containing TEXT\n'
     printf '\n'
@@ -458,6 +464,12 @@ parse_args() {
                 ;;
             --count)
                 MODE=count
+                ;;
+            --json)
+                MODE=json
+                ;;
+            --pretty)
+                MODE=pretty
                 ;;
             --sort)
                 SORT_OUTPUT=1
@@ -560,6 +572,100 @@ main() {
 }
 
 # === new functions go here ===
+format_json() {
+    local text="$INPUT"
+    local pretty=0
+    if [[ "$MODE" == 'pretty' ]]; then
+        pretty=1
+    fi
+    local out=""
+    local indent=0
+    local i=0
+    local len=${#text}
+    local instring=0
+    local ch
+    while (( i < len )); do
+        ch="${text:i:1}"
+        if (( instring )); then
+            if [[ "$ch" == '\' ]]; then
+                out+="${text:i:2}"
+                i=$((i + 2))
+                continue
+            fi
+            if [[ "$ch" == '"' ]]; then
+                instring=0
+            fi
+            out+="$ch"
+            i=$((i + 1))
+            continue
+        fi
+        case "$ch" in
+            '"')
+                instring=1
+                out+="$ch"
+                ;;
+            '{'|'[')
+                local j=$((i + 1))
+                while (( j < len )) && [[ "${text:j:1}" == [[:space:]] ]]; do
+                    j=$((j + 1))
+                done
+                if [[ "${text:j:1}" == '}' || "${text:j:1}" == ']' ]]; then
+                    out+="$ch${text:j:1}"
+                    i=$((j + 1))
+                    continue
+                fi
+                out+="$ch"
+                if (( pretty )); then
+                    out+=$'\n'
+                    indent=$((indent + 1))
+                    out+="$(indent_spaces "$indent")"
+                fi
+                ;;
+            '}'|']')
+                if (( pretty )); then
+                    while [[ "$out" == *[[:space:]] ]]; do
+                        out="${out%?}"
+                    done
+                    out+=$'\n'
+                    indent=$((indent - 1))
+                    out+="$(indent_spaces "$indent")"
+                fi
+                out+="$ch"
+                ;;
+            ',')
+                out+="$ch"
+                if (( pretty )); then
+                    out+=$'\n'
+                    out+="$(indent_spaces "$indent")"
+                fi
+                ;;
+            ':')
+                out+="$ch"
+                if (( pretty )); then
+                    out+=" "
+                fi
+                ;;
+            ' '|[[:space:]])
+                ;;
+            *)
+                out+="$ch"
+                ;;
+        esac
+        i=$((i + 1))
+    done
+    printf '%s\n' "$out"
+}
+
+indent_spaces() {
+    local n=$(( $1 * 2 ))
+    local pad=""
+    local j
+    for (( j = 0; j < n; j++ )); do
+        pad+=" "
+    done
+    printf '%s' "$pad"
+}
+
 MODE=flat
 SORT_OUTPUT=0
 FILTER=""
