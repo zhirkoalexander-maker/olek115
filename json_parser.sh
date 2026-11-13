@@ -9,6 +9,9 @@ CH=""
 VAL=""
 DEPTH=0
 SOURCE=""
+KEY_PATH=""
+RESULTS=()
+TYPES=()
 
 VERSION="0.3.0"
 MAX_DEPTH=128
@@ -237,8 +240,6 @@ parse_string() {
         POS=$((POS + 1))
     done
     expect_char '"'
-    out="${out//\\/\\\\}"
-    out="${out//\"/\\\"}"
     VAL="$out"
 }
 
@@ -250,7 +251,6 @@ parse_array() {
         return 1
     fi
     DEPTH=$((DEPTH + 1))
-    local arr=()
     peek_char
     if [[ "$CH" == ']' ]]; then
         expect_char ']'
@@ -258,17 +258,26 @@ parse_array() {
         VAL='[]'
         return
     fi
+    local index=0
     while true; do
         skip_whitespace
         local astart="$POS"
+        local saved_path="$KEY_PATH"
+        KEY_PATH="$KEY_PATH[$index]"
         parse_value
         local aend="$POS"
         local araw="${INPUT:astart:aend-astart}"
         if [[ "${araw:0:1}" == '"' ]]; then
-            arr+=("\"$VAL\"")
+            RESULTS+=("$KEY_PATH=\"$(json_escape "$VAL")\"")
+        elif [[ "$VAL" == '{}' || "$VAL" == '[]' ]]; then
+            RESULTS+=("$KEY_PATH=$VAL")
+        elif [[ "${araw:0:1}" == '{' || "${araw:0:1}" == '[' ]]; then
+            :
         else
-            arr+=("$araw")
+            RESULTS+=("$KEY_PATH=$araw")
         fi
+        KEY_PATH="$saved_path"
+        index=$((index + 1))
         skip_whitespace
         peek_char
         if [[ "$CH" == ',' ]]; then
@@ -288,9 +297,8 @@ parse_array() {
     done
     expect_char ']'
     DEPTH=$((DEPTH - 1))
-    VAL="${arr[*]}"
+    VAL=''
 }
-
 parse_object() {
     expect_char '{'
     skip_whitespace
@@ -299,7 +307,6 @@ parse_object() {
         return 1
     fi
     DEPTH=$((DEPTH + 1))
-    local obj=()
     local keys=$'\n'
     peek_char
     if [[ "$CH" == '}' ]]; then
@@ -327,17 +334,21 @@ parse_object() {
         expect_char ':'
         skip_whitespace
         local vstart="$POS"
+        local saved_path="$KEY_PATH"
+        KEY_PATH="$(child_path "$KEY_PATH" "$key")"
         parse_value
         local vend="$POS"
         local raw="${INPUT:vstart:vend-vstart}"
-        if [[ "$key" == *[[:space:]=]* || "$key" == *\"* || -z "$key" ]]; then
-            key="\"$key\""
-        fi
         if [[ "${raw:0:1}" == '"' ]]; then
-            obj+=("$key=\"$VAL\"")
+            RESULTS+=("$KEY_PATH=\"$(json_escape "$VAL")\"")
+        elif [[ "$VAL" == '{}' || "$VAL" == '[]' ]]; then
+            RESULTS+=("$KEY_PATH=$VAL")
+        elif [[ "${raw:0:1}" == '{' || "${raw:0:1}" == '[' ]]; then
+            :
         else
-            obj+=("$key=$raw")
+            RESULTS+=("$KEY_PATH=$raw")
         fi
+        KEY_PATH="$saved_path"
         skip_whitespace
         peek_char
         if [[ "$CH" == ',' ]]; then
@@ -357,7 +368,7 @@ parse_object() {
     done
     expect_char '}'
     DEPTH=$((DEPTH - 1))
-    VAL="${obj[*]}"
+    VAL=''
 }
 
 parse_value() {
@@ -382,6 +393,8 @@ parse_value() {
 }
 
 parse_document() {
+    KEY_PATH=""
+    RESULTS=()
     skip_whitespace
     parse_value
     skip_whitespace
@@ -392,18 +405,22 @@ parse_document() {
 }
 
 print_result() {
-    if [[ "${INPUT:0:1}" == '"' ]]; then
-        printf '"%s"\n' "$VAL"
-    else
-        printf '%s\n' "$VAL"
-    fi
+    print_mode
 }
 
 usage() {
     printf 'usage: %s [options] [json|file]\n' "$0"
     printf '\n'
+    printf 'modes:\n'
+    printf '  (default)              path=value for every value\n'
+    printf '  --paths                only the paths\n'
+    printf '  --types                path with the type of the value\n'
+    printf '  --count                how many values were found\n'
+    printf '  --sort                 sort the output\n'
+    printf '  --filter TEXT          keep only paths containing TEXT\n'
+    printf '\n'
     printf 'options:\n'
-    printf '  -h, --help              show this help\n'
+    printf '  -h, --help, help       show this help\n'
     printf '  -v, --version           show version\n'
     printf '  -q, --quiet             no output, only exit status\n'
     printf '  --validate              check the json and exit\n'
@@ -419,7 +436,7 @@ usage() {
 parse_args() {
     while (( $# > 0 )); do
         case "$1" in
-            -h|--help)
+            -h|--help|help)
                 usage
                 exit 0
                 ;;
@@ -432,6 +449,26 @@ parse_args() {
                 ;;
             --validate)
                 VALIDATE_ONLY=1
+                ;;
+            --paths)
+                MODE=paths
+                ;;
+            --types)
+                MODE=types
+                ;;
+            --count)
+                MODE=count
+                ;;
+            --sort)
+                SORT_OUTPUT=1
+                ;;
+            --filter)
+                if (( $# < 2 )); then
+                    printf 'error: --filter needs a text\n' >&2
+                    exit 2
+                fi
+                FILTER="$2"
+                shift
                 ;;
             --allow-duplicate-keys)
                 ALLOW_DUPLICATE_KEYS=1
@@ -523,6 +560,131 @@ main() {
 }
 
 # === new functions go here ===
+MODE=flat
+SORT_OUTPUT=0
+FILTER=""
+
+child_path() {
+    local parent="$1"
+    local key="$2"
+    local path="$key"
+    if [[ ! "$key" =~ ^[A-Za-z0-9_-]+$ ]]; then
+        path="\"$(json_escape "$key")\""
+    fi
+    if [[ -n "$parent" ]]; then
+        path="$parent.$path"
+    fi
+    printf '%s' "$path"
+}
+
+json_escape() {
+    local text="$1"
+    text="${text//\\/\\\\}"
+    text="${text//\"/\\\"}"
+    text="${text//$'\n'/\\n}"
+    text="${text//$'\t'/\\t}"
+    text="${text//$'\r'/\\r}"
+    printf '%s' "$text"
+}
+
+json_quote() {
+    printf '"%s"' "$(json_escape "$1")"
+}
+
+sort_pairs() {
+    local pairs=($1)
+    local sorted
+    sorted="$(printf '%s\n' "${pairs[@]}" | sort -t '=' -k1,1 | tr '\n' ' ')"
+    printf '%s\n' "${sorted% }"
+}
+
+result_path() {
+    local line="$1"
+    if [[ "$line" != '"'* ]]; then
+        printf '%s' "${line%%=*}"
+        return
+    fi
+    local i=1
+    local ch
+    while (( i < ${#line} )); do
+        ch="${line:i:1}"
+        if [[ "$ch" == '\' ]]; then
+            i=$((i + 2))
+            continue
+        fi
+        if [[ "$ch" == '"' ]]; then
+            break
+        fi
+        i=$((i + 1))
+    done
+    printf '%s' "${line:0:i+1}"
+}
+
+result_value() {
+    local line="$1"
+    local path
+    path="$(result_path "$line")"
+    printf '%s' "${line:${#path}+1}"
+}
+
+value_type() {
+    local value="$1"
+    if [[ "$value" == '"'* ]]; then
+        printf 'string'
+    elif [[ "$value" == 'true' || "$value" == 'false' ]]; then
+        printf 'boolean'
+    elif [[ "$value" == 'null' ]]; then
+        printf 'null'
+    elif [[ "$value" == '{}' ]]; then
+        printf 'object'
+    elif [[ "$value" == '[]' ]]; then
+        printf 'array'
+    else
+        printf 'number'
+    fi
+}
+
+print_root() {
+    if [[ "${INPUT:0:1}" == '"' ]]; then
+        printf '(root)="%s"\n' "$(json_escape "$VAL")"
+    else
+        printf '(root)=%s\n' "$VAL"
+    fi
+}
+
+print_mode() {
+    if (( ${#RESULTS[@]} == 0 )); then
+        print_root
+        return
+    fi
+    local line
+    local path
+    local value
+    local out=""
+    local count=0
+    for line in "${RESULTS[@]}"; do
+        path="$(result_path "$line")"
+        value="$(result_value "$line")"
+        if [[ -n "$FILTER" && "$path" != *"$FILTER"* ]]; then
+            continue
+        fi
+        count=$((count + 1))
+        case "$MODE" in
+            paths) out+="$path"$'\n' ;;
+            types) out+="$path:$(value_type "$value")=$value"$'\n' ;;
+            *) out+="$path=$value"$'\n' ;;
+        esac
+    done
+    if [[ "$MODE" == 'count' ]]; then
+        printf '%d\n' "$count"
+        return
+    fi
+    if (( SORT_OUTPUT )); then
+        printf '%s' "$out" | sort
+    else
+        printf '%s' "$out"
+    fi
+}
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     main "$@"
