@@ -516,28 +516,40 @@ print_result() {
 }
 
 usage() {
-    printf 'usage: %s [options] [json|file]\n' "$0"
-    printf '\n'
-    printf 'modes:\n'
-    printf '  (default)              path=value for every value\n'
-    printf '  --paths                only the paths\n'
-    printf '  --types                path with the type of the value\n'
-    printf '  --count                how many values were found\n'
-    printf '  --sort                 sort the output\n'
-    printf '  --filter TEXT          keep only paths containing TEXT\n'
-    printf '\n'
-    printf 'options:\n'
-    printf '  -h, --help, help       show this help\n'
-    printf '  -v, --version           show version\n'
-    printf '  -q, --quiet             no output, only exit status\n'
-    printf '  --validate              check the json and exit\n'
-    printf '  --max-depth N           nesting depth limit (default %d)\n' "$MAX_DEPTH"
-    printf '  --max-size N            input size limit in bytes (default %d)\n' "$MAX_SIZE"
-    printf '  --allow-duplicate-keys  accept duplicate object keys\n'
-    printf '  --allow-trailing-comma  accept a trailing comma\n'
-    printf '  --allow-comments        accept // and /* */ comments\n'
-    printf '\n'
-    printf 'the json can be an argument, a file path, or read from stdin\n'
+    cat << 'EOF'
+Usage: json_parser [options] [json|file]
+
+Modes:
+  (default)              path=value for every value
+  --paths                only the paths
+  --types                path with the type of the value
+  --count                how many values were found
+  --sort                 sort the output
+  --filter TEXT          keep only paths containing TEXT
+  --json                 print the json back in one line
+  --pretty               print the json back with indentation
+
+Options:
+  -h, --help, help       show this help
+  -v, --version           show version
+  -q, --quiet             no output, only exit status
+  --validate              check the json and exit
+  --max-depth N           nesting depth limit (default 128)
+  --max-size N            input size limit in bytes (default 1000000)
+  --allow-duplicate-keys  accept duplicate object keys
+  --allow-trailing-comma  accept a trailing comma
+  --allow-comments        accept // and /* */ comments
+
+The json can be an argument, a file path, or read from stdin
+
+Examples:
+  json_parser '{"a":1}'              # parse JSON string
+  json_parser file.json              # parse from file
+  echo '{"a":1}' | json_parser       # read from stdin
+  json_parser --pretty file.json     # pretty print
+  json_parser --paths file.json      # show only paths
+  json_parser --validate file.json   # validate only
+EOF
 }
 
 parse_args() {
