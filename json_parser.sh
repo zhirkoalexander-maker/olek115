@@ -485,7 +485,8 @@ format_json() {
                 fi
                 ;;
             ' '|$'	'|$'
-'|$'')
+'|$'
+')
                 ;;
             *)
                 out+="$ch"
@@ -583,6 +584,10 @@ parse_args() {
                 ;;
             --pretty)
                 MODE=pretty
+                ;;
+            --example)
+                show_example
+                exit 0
                 ;;
             --sort)
                 SORT_OUTPUT=1
