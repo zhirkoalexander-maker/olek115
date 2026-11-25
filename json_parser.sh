@@ -816,6 +816,30 @@ print_mode() {
     fi
 }
 
+show_example() {
+    cat << 'EOF'
+Examples:
+  json_parser '{"a":1}'              # parse JSON string
+  json_parser file.json              # parse from file
+  echo '{"a":1}' | json_parser       # read from stdin
+  json_parser --pretty file.json     # pretty print
+  json_parser --paths file.json      # show only paths
+  json_parser --validate file.json   # validate only
+EOF
+}
+
+show_example() {
+    cat << 'EOF'
+Examples:
+  json_parser '{"a":1}'              # parse JSON string
+  json_parser file.json              # parse from file
+  echo '{"a":1}' | json_parser       # read from stdin
+  json_parser --pretty file.json     # pretty print
+  json_parser --paths file.json      # show only paths
+  json_parser --validate file.json   # validate only
+EOF
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     main "$@"
 fi
